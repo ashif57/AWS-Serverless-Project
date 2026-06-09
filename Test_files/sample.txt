@@ -1,0 +1,15 @@
+curl -X POST  https://xwor7jnmo9.execute-api.us-east-1.amazonaws.com/prod/create \
+-H "x-api-key: 2taejbqIuf6vCpCebMB4s3h9t8zzXqCM3y3zpBc7" \
+-H "Content-Type: application/json" \
+-d '{"url": "https://kodekloud.com", "custom_id": "kk"}'
+
+curl -X POST https://xwor7jnmo9.execute-api.us-east-1.amazonaws.com/prod/create \
+-H "x-api-key: 2taejbqIuf6vCpCebMB4s3h9t8zzXqCM3y3zpBc7" \
+-H "Content-Type: application/json" \
+-d '{"url": "https://kodekloud.com", "custom_id": "kk"}'
+
+curl -X POST https://xwor7jnmo9.execute-api.us-east-1.amazonaws.com/prod/create \
+-H "x-api-key: 2taejbqIuf6vCpCebMB4s3h9t8zzXqCM3y3zpBc7" \
+-d '{"url": "https://www.amazon.com"}'
+
+curl -v https://xwor7jnmo9.execute-api.us-east-1.amazonaws.com/prod/kk
