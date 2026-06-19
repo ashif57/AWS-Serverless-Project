@@ -3,6 +3,12 @@ from botocore.exceptions import ClientError
 
 table = boto3.resource('dynamodb').Table(os.environ['TABLE_NAME'])
 
+CORS_HEADERS = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type,X-Api-Key',
+    'Access-Control-Allow-Methods': 'OPTIONS,POST'
+}
+
 def generate_id():
     return ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(6))
 
@@ -20,12 +26,28 @@ def lambda_handler(event, context):
                 Item={'short_id': short_id, 'long_url': long_url},
                 ConditionExpression='attribute_not_exists(short_id)'
             )
-            return {'statusCode': 200, 'body': json.dumps({'message': 'URL Created', 'short_id': short_id, 'original_url': long_url})}
+            return {
+                'statusCode': 200,
+                'headers': CORS_HEADERS,
+                'body': json.dumps({'message': 'URL Created', 'short_id': short_id, 'original_url': long_url})
+            }
         except ClientError as e:
             if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
                 if is_custom:
-                    return {'statusCode': 409, 'body': json.dumps({'error': f"Custom ID '{custom_id}' is already taken."})}
-                return {'statusCode': 500, 'body': json.dumps({'error': "ID collision. Please try again."})}
+                    return {
+                        'statusCode': 409,
+                        'headers': CORS_HEADERS,
+                        'body': json.dumps({'error': f"Custom ID '{custom_id}' is already taken."})
+                    }
+                return {
+                    'statusCode': 500,
+                    'headers': CORS_HEADERS,
+                    'body': json.dumps({'error': "ID collision. Please try again."})
+                }
             raise e
     except Exception as e:
-        return {'statusCode': 500, 'body': json.dumps({'error': str(e)})}
+        return {
+            'statusCode': 500,
+            'headers': CORS_HEADERS,
+            'body': json.dumps({'error': str(e)})
+        }

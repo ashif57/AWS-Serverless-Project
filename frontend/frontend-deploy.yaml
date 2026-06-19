@@ -1,0 +1,155 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFormation template for AWS Serverless URL Shortener Frontend: S3 Bucket, CloudFront Distribution (HTTPS via ACM), and Route 53 DNS Alias'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: serverless-url-shortener
+    Description: Project prefix name for resources.
+
+  DomainName:
+    Type: String
+    Description: The custom domain name for the URL shortener frontend (e.g., short.example.com).
+
+  Route53HostedZoneId:
+    Type: String
+    Description: The Route 53 Hosted Zone ID where the DomainName is registered.
+
+  AcmCertificateArn:
+    Type: String
+    Default: ''
+    Description: (Optional) The ARN of an existing ACM Certificate in us-east-1. Leave blank to automatically create a new ACM Certificate.
+
+Conditions:
+  CreateNewCert: !Equals [ !Ref AcmCertificateArn, '' ]
+
+Resources:
+  # 1. S3 Bucket for Static Website hosting (with private access only)
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${ProjectName}-frontend-${AWS::AccountId}-${AWS::Region}'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  # 2. CloudFront Origin Access Control (OAC) for S3 Security
+  CloudFrontOAC:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Description: 'OAC for S3 Frontend Bucket'
+        Name: !Sub '${ProjectName}-oac-${AWS::Region}'
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  # 3. ACM SSL Certificate (Created ONLY if AcmCertificateArn is not provided)
+  # IMPORTANT: This template must be deployed in us-east-1 to successfully associate this ACM Cert with CloudFront!
+  FrontendCertificate:
+    Type: AWS::CertificateManager::Certificate
+    Condition: CreateNewCert
+    Properties:
+      DomainName: !Ref DomainName
+      ValidationMethod: DNS
+      DomainValidationOptions:
+        - DomainName: !Ref DomainName
+          HostedZoneId: !Ref Route53HostedZoneId
+
+  # 4. CloudFront Distribution
+  FrontendDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: !Sub 'CloudFront Distribution for ${ProjectName} Frontend'
+        DefaultRootObject: index.html
+        Aliases:
+          - !Ref DomainName
+        Origins:
+          - Id: S3Origin
+            DomainName: !GetAtt FrontendBucket.RegionalDomainName
+            S3OriginConfig:
+              OriginAccessIdentity: '' # Omit when using OAC
+            OriginAccessControlId: !GetAtt CloudFrontOAC.Id
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          Compress: true
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachedMethods:
+            - GET
+            - HEAD
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+        ViewerCertificate:
+          AcmCertificateArn: !If [ CreateNewCert, !Ref FrontendCertificate, !Ref AcmCertificateArn ]
+          SslSupportMethod: sni-only
+          MinimumProtocolVersion: TLSv1.2_2021
+
+  # 5. S3 Bucket Policy (Allows CloudFront OAC to read S3 content)
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudFrontServicePrincipalReadOnly
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub '${FrontendBucket.Arn}/*'
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${FrontendDistribution}'
+
+  # 6. Route 53 Records pointing to CloudFront (IPv4 A Record & IPv6 AAAA Record)
+  Route53RecordA:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref Route53HostedZoneId
+      Name: !Ref DomainName
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt FrontendDistribution.DomainName
+        HostedZoneId: Z2FDTNDATAQYW2 # Global CloudFront hosted zone ID (always this static ID)
+
+  Route53RecordAAAA:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref Route53HostedZoneId
+      Name: !Ref DomainName
+      Type: AAAA
+      AliasTarget:
+        DNSName: !GetAtt FrontendDistribution.DomainName
+        HostedZoneId: Z2FDTNDATAQYW2 # Global CloudFront hosted zone ID (always this static ID)
+
+Outputs:
+  FrontendS3Bucket:
+    Description: 'S3 Bucket name for frontend static hosting'
+    Value: !Ref FrontendBucket
+  
+  CloudFrontDistributionId:
+    Description: 'CloudFront Distribution ID'
+    Value: !Ref FrontendDistribution
+  
+  CloudFrontDomainName:
+    Description: 'CloudFront Distribution URL'
+    Value: !GetAtt FrontendDistribution.DomainName
+  
+  CustomDomainURL:
+    Description: 'Custom Domain URL link'
+    Value: !Sub 'https://${DomainName}'

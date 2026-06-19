@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShortenIt | Premium AWS Serverless URL Shortener</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Background Elements -->
+    <div class="bg-glow bg-glow-1"></div>
+    <div class="bg-glow bg-glow-2"></div>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo-area">
+                <svg class="logo-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                </svg>
+                <span class="logo-text">Shorten<span class="text-accent">It</span></span>
+            </div>
+            <button id="settingsBtn" class="btn-icon" title="API Configuration">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+            </button>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Alert Container for errors/notifications -->
+            <div id="alertContainer" class="alert-container hidden">
+                <span id="alertText"></span>
+                <button id="alertCloseBtn" class="alert-close">&times;</button>
+            </div>
+
+            <!-- Form Card -->
+            <section id="formSection" class="card glass">
+                <div class="card-header">
+                    <h2>Shorten a Long URL</h2>
+                    <p class="subtitle">Enter your destination URL to create an instant, secure, and clean short link.</p>
+                </div>
+                
+                <form id="shortenForm" class="shorten-form">
+                    <div class="input-group">
+                        <label for="longUrl">Destination URL</label>
+                        <div class="input-wrapper">
+                            <span class="input-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                                </svg>
+                            </span>
+                            <input type="url" id="longUrl" placeholder="https://example.com/very/long/path/to/page" required>
+                        </div>
+                    </div>
+
+                    <!-- Custom ID Accordion -->
+                    <div class="custom-id-container">
+                        <button type="button" id="toggleCustomIdBtn" class="btn-text">
+                            <svg class="chevron-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                            Customize Short ID (Optional)
+                        </button>
+                        
+                        <div id="customIdFields" class="custom-id-fields collapsed">
+                            <div class="input-group">
+                                <label for="customId">Custom Slash / Alias</label>
+                                <div class="input-wrapper prefix-wrapper">
+                                    <span id="domainPrefix" class="url-prefix">short.en/</span>
+                                    <input type="text" id="customId" placeholder="custom-alias" pattern="^[a-zA-Z0-9_-]{2,30}$" title="Alphanumeric, underscores, or hyphens only. 2-30 characters.">
+                                </div>
+                                <span class="input-help">Only letters, numbers, hyphens, and underscores allowed.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="submitBtn" class="btn btn-primary btn-glow">
+                        <span class="btn-text-content">Create Short Link</span>
+                        <div class="spinner hidden"></div>
+                    </button>
+                </form>
+            </section>
+
+            <!-- Result Card (Hidden initially) -->
+            <section id="resultSection" class="card glass success-card hidden">
+                <div class="success-header">
+                    <div class="success-icon-badge">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                    </div>
+                    <h2>Your Link is Ready!</h2>
+                    <p class="subtitle">Shortened and optimized for sharing.</p>
+                </div>
+
+                <div class="result-details">
+                    <div class="result-item">
+                        <label>Short URL</label>
+                        <div class="copy-box">
+                            <input type="text" id="shortUrlOutput" readonly>
+                            <button id="copyBtn" class="btn btn-secondary" title="Copy to clipboard">
+                                <svg id="copyIcon" class="btn-icon-svg" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                                <span id="copyBtnText">Copy</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="result-item">
+                        <label>Original Destination</label>
+                        <a id="originalUrlOutput" href="#" target="_blank" class="original-link">https://example.com/long/url/here</a>
+                    </div>
+
+                    <div class="result-row">
+                        <div class="qr-container">
+                            <label>QR Code</label>
+                            <div class="qr-code-wrapper">
+                                <img id="qrCodeImg" src="" alt="QR Code Link">
+                                <div class="qr-loading-placeholder">Generating...</div>
+                            </div>
+                        </div>
+                        <div class="action-column">
+                            <label>Quick Actions</label>
+                            <a id="visitBtn" href="#" target="_blank" class="btn btn-secondary btn-full">
+                                Visit Link
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                    <polyline points="15 3 21 3 21 9"></polyline>
+                                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                                </svg>
+                            </a>
+                            <button id="resetFormBtn" class="btn btn-primary btn-full">
+                                Shorten Another URL
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Mock Analytics Section -->
+            <section class="card glass analytics-card">
+                <div class="card-header">
+                    <h2>Service Capabilities</h2>
+                    <p class="subtitle">Deploying this stack unlocks fully serverless real-time click tracking, geolocation analytics, and automated URL cleanups.</p>
+                </div>
+                
+                <div class="mock-stats-grid">
+                    <div class="stat-box">
+                        <span class="stat-value">12.5k+</span>
+                        <span class="stat-label">Total Clicks Mocked</span>
+                        <div class="stat-progress-bar"><div class="stat-progress-fill" style="width: 78%"></div></div>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-value">3.2s</span>
+                        <span class="stat-label">Average TTL Age</span>
+                        <div class="stat-progress-bar"><div class="stat-progress-fill" style="width: 45%"></div></div>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-value">99.99%</span>
+                        <span class="stat-label">S3/CloudFront SLA</span>
+                        <div class="stat-progress-bar"><div class="stat-progress-fill" style="width: 99.9%"></div></div>
+                    </div>
+                </div>
+
+                <div class="tech-stack-badges">
+                    <span class="badge">AWS Lambda</span>
+                    <span class="badge">API Gateway</span>
+                    <span class="badge">DynamoDB</span>
+                    <span class="badge">Amazon S3</span>
+                    <span class="badge">CloudFront</span>
+                    <span class="badge">Route 53</span>
+                    <span class="badge">ACM</span>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <p>AWS Serverless URL Shortener Stack &bull; Built with S3, Route53, and ACM</p>
+        </footer>
+    </div>
+
+    <!-- API Config Modal (Glassmorphism settings) -->
+    <div id="settingsModal" class="modal-backdrop hidden">
+        <div class="modal card glass">
+            <div class="modal-header">
+                <h2>AWS Backend API Settings</h2>
+                <button id="closeSettingsModal" class="btn-close">&times;</button>
+            </div>
+            <p class="modal-desc">Configure the API Gateway details. This configurations is stored securely in your browser's local storage.</p>
+            
+            <div class="modal-body">
+                <div class="input-group">
+                    <label for="apiEndpointInput">API Gateway Endpoint URL</label>
+                    <input type="url" id="apiEndpointInput" placeholder="https://a1b2c3d4.execute-api.us-east-1.amazonaws.com/prod">
+                    <span class="input-help">Exclude the resource path. E.g., do not add `/create` at the end.</span>
+                </div>
+                
+                <div class="input-group">
+                    <label for="apiKeyInput">x-api-key (Optional)</label>
+                    <input type="password" id="apiKeyInput" placeholder="Enter API Key if WAF/usage plans require it">
+                    <span class="input-help">Only required if API Key Auth is enabled on your Gateway.</span>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button id="resetSettingsBtn" class="btn btn-secondary">Use Defaults</button>
+                <button id="saveSettingsBtn" class="btn btn-primary">Save Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
